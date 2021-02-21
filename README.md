@@ -10,12 +10,14 @@ The server design will most likely be simple. It should guarantee some invariant
 The client needs to be more complicated. For Win32, the client needs to be a library that can be loaded into the address space. At the entrypoint, this library needs to connect to the server to receive events. Several Win32 API functions will need to be patched:
 
 * `PeekMessage`: Inject `WM_POINTER` events. We should 'coalesce' all contiguous motion events for one device currently pending, but otherwise play back the events otherwise in normal order.
+* `GetMessage`: Similar to `PeekMessage`, but might be trickier since it blocks. It should send `WM_POINTER` events if they are pending.
 * `DefWindowProc`: Translate `WM_POINTER` events into `WM_MOUSE` events. This allows them to be handled by the app. We may need to somehow prevent the XI2 event from being translated into an X11 mouse event to avoid duplicate events; maybe a Grab would be appropriate.
 * `GetPointerCursorId`: Not sure yet. Maybe
 * `GetPointer{Frame,}{,Pen,Touch}Info{,History}`: Implement these to handle providing coalesced events.
 * `GetPointerType`: Override to return `PT_PEN`/`PT_TOUCH` as needed
 * `EnableMouseInPointer`: This would be challenging, but should translate `WM_MOUSE` messages into `WM_POINTER` messages.
 * `IsMouseInPointerEnabled`: Return true if the EnableMouseInPointer latch was set.
+* `GetSystemMetrics`: Respond 1 to SM_TABLETPC so that applications will present the option to enable `WM_POINTER` mode. This doesn't really make that much sense.
 
 Likely approach will be to construct trampolines, probably using the `detour` crate. As for injecting our DLL into the process, it will likely work as follows:
 
